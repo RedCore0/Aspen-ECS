@@ -1,10 +1,10 @@
 # ECS_C - Entity Component System in C
 
-A lightweight, macro-based Entity Component System (ECS) implementation written in C. This is a data-oriented architecture library designed for efficient entity and component management using compile-time macros.
+A lightweight, macro-based Entity Component System (ECS) implementation written in C. This is a data-oriented architecture library designed for efficient entity and component management using compilation-time code generation.
 
 ## Overview
 
-ECS_C provides a flexible framework for building applications using the Entity Component System pattern. Instead of traditional inheritance hierarchies, ECS_C uses composition, where entities are collections of components, and systems process entities based on their component signatures.
+ECS_C provides a flexible framework for building applications using the Entity Component System pattern. Instead of traditional inheritance hierarchies, ECS_C uses composition, where entities are collections of components.
 
 **Key Features:**
 - **Macro-based API** - Clean, expressive syntax with compile-time code generation
@@ -194,7 +194,7 @@ For macros to work correctly, follow these naming patterns:
 
 ## License
 
-[Specify your license here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 

@@ -103,7 +103,7 @@ struct Entity InstantiateExampleEntity(/* parameters */);
 struct Entity InstantiateExampleEntity(/* parameters */) {
     struct Entity entity;
     InitializeEntity(&entity);
-    AddExample(&entity, /* parameters */);
+    AddComponent(&entity, Example, /* parameters */);
     return entity;
 }
 ```

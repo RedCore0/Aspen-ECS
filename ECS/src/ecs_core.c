@@ -4,7 +4,8 @@ int EntityIDs = 0;
 int ActiveEntityCount = 0;
 int ActiveEntities[MAX_ENTITIES];
 int EntityToIndex[MAX_ENTITIES];
-uint64_t EntitySignatures[MAX_ENTITIES] = {0};
+ComponentSignature EntitySignatures[MAX_ENTITIES] = {0};
+
 Stack AvailableIDs;
 
 void InitializeStack(Stack *stack) {
@@ -25,7 +26,7 @@ void PushToStack(Stack *stack, const int id) {
         return;
     }
     stack->arr[++stack->top] = id;
-    //printf("Pushed %d\n", id);
+    printf("Pushed %d\n", id);
 }
 
 int PopFromStack(Stack *stack) {
@@ -47,6 +48,38 @@ int PeekStack(const Stack *stack) {
     return stack->arr[stack->top];
 }
 
+void Signature_SetBit(ComponentSignature *sig, int bitIndex) {
+    int chunk = bitIndex / 64;
+    int bit   = bitIndex % 64;
+    sig->chunks[chunk] |= (1ULL << bit);
+}
+
+void Signature_ClearBit(ComponentSignature *sig, int bitIndex) {
+    int chunk = bitIndex / 64;
+    int bit   = bitIndex % 64;
+    sig->chunks[chunk] &= ~(1ULL << bit);
+}
+
+bool Signature_TestBit(const ComponentSignature *sig, int bitIndex) {
+    int chunk = bitIndex / 64;
+    int bit   = bitIndex % 64;
+    return (sig->chunks[chunk] & (1ULL << bit)) != 0;
+}
+
+void Signature_ClearAll(ComponentSignature *sig) {
+    for (int i = 0; i < BITSET_CHUNKS; i++) {
+        sig->chunks[i] = 0;
+    }
+}
+
+bool Signature_Matches(const ComponentSignature *entitySig, const ComponentSignature *systemSig) {
+    for (int i = 0; i < BITSET_CHUNKS; i++) {
+        if ((entitySig->chunks[i] & systemSig->chunks[i]) != systemSig->chunks[i]) {
+            return false;
+        }
+    }
+    return true;
+}
 
 void InitializeEntity(struct Entity *entity) {
     if (!StackEmpty(&AvailableIDs)) {
@@ -63,7 +96,7 @@ void InitializeEntity(struct Entity *entity) {
 }
 
 void DestroyEntity(struct Entity *entity) {
-    EntitySignatures[entity->id] = COMPONENT_NONE;
+    Signature_ClearAll(&EntitySignatures[entity->id]);
 
     int indexOfDestroyEntity = EntityToIndex[entity->id];
     int indexOfLastEntity = ActiveEntityCount - 1;

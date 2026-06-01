@@ -1,0 +1,9 @@
+//Components
+
+COMPONENT(Test, {
+    int value;
+})
+
+//Tags
+
+TAG(Default)

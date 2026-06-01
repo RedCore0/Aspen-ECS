@@ -4,19 +4,16 @@ project(CEngine C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Explicitly add ONLY your source files. This completely blocks any hidden files.
 add_executable(CEngine
-        main.c
-        ecs_core.c
-        Components/TestComponent/test_component.c
-        Systems/TestSystem/value_increase_system.c
-        Entities/Test_Entity.c
+        src/main.c
+        src/entities/E_test.c
+        src/systems/S_value_increase.c
+
+        ECS/src/ecs_core.c
+        ECS/src/components_tags.c
 )
 
-# Tell CMake exactly which folders contain your headers so you can use compressed file names
 target_include_directories(CEngine PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/Components/TestComponent
-        ${CMAKE_CURRENT_SOURCE_DIR}/Systems/TestSystem
-        ${CMAKE_CURRENT_SOURCE_DIR}/Entities
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/ECS/include
 )

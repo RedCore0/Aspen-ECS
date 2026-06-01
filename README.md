@@ -4,7 +4,7 @@ A lightweight, macro-based Entity Component System (ECS) implementation written 
 
 ## Overview
 
-ECS_C provides a flexible framework for building applications using the Entity Component System pattern. Instead of traditional inheritance hierarchies, ECS_C uses composition, where entities are collections of components and tags.
+ECS_C provides a flexible framework for building applications using the Entity Component System pattern. Instead of traditional inheritance hierarchies, ECS_C uses composition, where entities are collections of components.
 
 **Key Features:**
 - **Macro-based API** - Clean, expressive syntax with compile-time code generation
@@ -119,16 +119,16 @@ struct Entity InstantiatePlayerEntity(float x, float y);
 
 **`src/entities/player_entity.c`**
 ```c
-#include "player_entity.h"
+#include "entities/player_entity.h"
 #include "components_tags.h"
 
 struct Entity InstantiatePlayerEntity(float x, float y) {
     struct Entity entity;
     InitializeEntity(&entity);
     
-    AddComponent(&entity, Position, (PositionComponent){x, y});
-    AddComponent(&entity, Velocity, (PositionComponent){0, 0});
-    AddComponent(&entity, Health, (HealthComponent){100, 100});
+    AddComponent(&entity, Position, .x = x, .y = y);
+    AddComponent(&entity, Velocity, .vx = 0, .vy = 0);
+    AddComponent(&entity, Health, .hp = 100, .maxHp = 100);
     AddTag(&entity, Player);
     AddTag(&entity, Active);
     
@@ -138,7 +138,7 @@ struct Entity InstantiatePlayerEntity(float x, float y) {
 
 ### 3. Create Systems
 
-Systems process entities that match certain component signatures:
+Systems process entities that match certain component signatures using the `ForEachEntityWith` macro:
 
 **`src/systems/movement_system.h`**
 ```c
@@ -152,18 +152,16 @@ void MovementSystem(float deltaTime);
 
 **`src/systems/movement_system.c`**
 ```c
-#include "movement_system.h"
+#include "systems/movement_system.h"
 #include "components_tags.h"
 #include "ecs_core.h"
 
 void MovementSystem(float deltaTime) {
-    // Process all entities that have both Position and Velocity
+    // Process all entities that have both Position and Velocity components
     ForEachEntityWith(entity_id, COMPONENT_Position, COMPONENT_Velocity) {
-        PositionComponent *pos = &PositionComponentData[entity_id];
-        VelocityComponent *vel = &VelocityComponentData[entity_id];
-        
-        pos->x += vel->vx * deltaTime;
-        pos->y += vel->vy * deltaTime;
+        // GetComponent returns a reference to the component data
+        GetComponent(entity_id, Position).x += GetComponent(entity_id, Velocity).vx * deltaTime;
+        GetComponent(entity_id, Position).y += GetComponent(entity_id, Velocity).vy * deltaTime;
     }
 }
 ```
@@ -180,12 +178,12 @@ void MovementSystem(float deltaTime) {
 int main(void) {
     InitializeStack(&AvailableIDs);
     
-    // Create a player entity
-    struct Entity player = InstantiatePlayerEntity(10.0f, 20.0f);
+    // Create a player entity using InstantiateEntity macro
+    struct Entity player = InstantiateEntity(Player, 10.0f, 20.0f);
     
-    // Modify components
-    VelocityComponentData[player.id].vx = 5.0f;
-    VelocityComponentData[player.id].vy = 0.0f;
+    // Modify components directly through the component data array
+    GetComponent(player.id, Velocity).vx = 5.0f;
+    GetComponent(player.id, Velocity).vy = 0.0f;
     
     // Run systems
     MovementSystem(0.016f);  // 16ms frame time
@@ -258,13 +256,16 @@ TAG(TagName)
 
 ```c
 // Add component to entity
-AddComponent(&entity, ComponentName, (ComponentNameComponent){...})
+AddComponent(&entity, ComponentName, .field1 = value1, .field2 = value2)
 
 // Check if entity has component
 HasComponent(&entity, ComponentName)
 
-// Get component data
+// Get component data (returns a reference to the component array element)
 GetComponent(entity.id, ComponentName)
+
+// Get and modify component data
+GetComponent(entity.id, ComponentName).field = new_value;
 
 // Remove component from entity
 RemoveComponent(&entity, ComponentName)
@@ -293,6 +294,7 @@ InitializeEntity(&entity)
 DestroyEntity(&entity)
 
 // Instantiate entity (calls: InstantiateComponentNameEntity(...))
+// This expands to InstantiatePlayerEntity(...) for InstantiateEntity(Player, ...)
 InstantiateEntity(ComponentName, ...args)
 ```
 
@@ -301,9 +303,10 @@ InstantiateEntity(ComponentName, ...args)
 ```c
 // Iterate all entities with specific components
 ForEachEntityWith(entity_id, COMPONENT_Type1, COMPONENT_Type2) {
-    // entity_id is the entity being processed
-    Type1Component *comp1 = &Type1ComponentData[entity_id];
-    Type2Component *comp2 = &Type2ComponentData[entity_id];
+    // entity_id is the active entity ID being processed
+    // Access component data using GetComponent macro
+    TypeName val1 = GetComponent(entity_id, Type1);
+    TypeName val2 = GetComponent(entity_id, Type2);
 }
 ```
 
@@ -311,11 +314,10 @@ ForEachEntityWith(entity_id, COMPONENT_Type1, COMPONENT_Type2) {
 
 To properly use the generated macros, follow these naming patterns:
 
-| Definition | Generated Functions | Example |
-|-----------|-------------------|---------|
-| `COMPONENT(Test, {...})` | `AddTest`, `HasTest`, `GetTest`, `RemoveTest` | `AddComponent(&e, Test, val)` |
-| `TAG(Active)` | `AddTag_Active`, `HasTag_Active`, `RemoveTag_Active` | `AddTag(&e, Active)` |
-| `InstantiateEntity(Test)` | Calls `InstantiateTestEntity(...)` | PascalCase match required |
+| Definition | Generated Macros | Array Name | Example |
+|-----------|-------------------|---------|---------|
+| `COMPONENT(Test, {...})` | `AddTest`, `HasTest`, `GetTest`, `RemoveTest` | `TestComponentData` | `AddComponent(&e, Test, .field = val)` |
+| `TAG(Active)` | `AddTag_Active`, `HasTag_Active`, `RemoveTag_Active` | N/A | `AddTag(&e, Active)` |
 
 ## Architecture
 
@@ -325,6 +327,7 @@ To properly use the generated macros, follow these naming patterns:
 - **System**: Functions that iterate entities with specific signatures
 - **Tag**: Zero-overhead marker components for entity classification
 - **Definition File**: Centralized component/tag declarations
+- **Active Entity List**: Sparse-dense set structure for efficient iteration
 
 ## Limits
 
@@ -349,8 +352,10 @@ ECS_C/
 ├── src/                          # Example application
 │   ├── main.c
 │   ├── entities/
+│   │   └── E_test.c
 │   ├── systems/
-│   └── components_tags.h         # Example definitions
+│   │   └── S_value_increase.c
+│   └── CMakeLists.txt
 └── CMakeLists.txt
 ```
 

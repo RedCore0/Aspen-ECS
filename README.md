@@ -127,6 +127,10 @@ Refer to `ecs_core.h` for additional utility functions:
 
 Components are defined in `components_tags.def` using the `COMPONENT` macro:
 
+### Component and Tag Definition
+
+Define components and tags in a `.def` file:
+
 ```c
 COMPONENT(MyComponent, {
     int field1;

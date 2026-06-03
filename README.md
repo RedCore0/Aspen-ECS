@@ -1,196 +1,173 @@
 # ECS_C - Entity Component System in C
 
-A lightweight, macro-based Entity Component System (ECS) implementation written in C. This is a data-oriented architecture library designed for efficient entity and component management using compilation-time code generation.
+A lightweight, macro-based Entity Component System (ECS) implementation written in C. This is a data-oriented architecture library designed for efficient entity and component management using compile-time code generation.
 
 ## Overview
 
-ECS_C provides a flexible framework for building applications using the Entity Component System pattern. Instead of traditional inheritance hierarchies, ECS_C uses composition, where entities are collections of components.
+ECS_C provides a flexible framework for building applications using the Entity Component System pattern. Instead of traditional inheritance hierarchies, ECS_C uses composition, where entities are collections of components and tags. The library uses powerful macros to simplify entity and component management while maintaining high performance.
 
 **Key Features:**
 - **Macro-based API** - Clean, expressive syntax with compile-time code generation
 - **Component Signatures** - Efficient bitmask-based component tracking
-- **Entity Pooling** - Reusable entity IDs with generation counters
-- **No Memory Allocation** - Stack-based approach with fixed entity limits
-- **High Performance** - Cache-friendly data layout and minimal overhead
+- **Entity Pooling** - Automatic entity ID recycling for memory efficiency
+- **Flexible Storage** - Dynamic allocation with automatic resizing
+- **Tag System** - Lightweight component-less categorization
+- **System Queries** - Iterate over entities with specific components/tags
 
-## Building
+## Installation
 
-### Prerequisites
-- C99 or later compiler (GCC, Clang, or MSVC)
-- CMake 3.15 or higher
+1. Copy the `ECS` folder to your project directory
+2. Include `ecs_core.h` in your main file with the `ECS_IMPLEMENTATION` define:
 
-### Build Instructions
-
-```bash
-mkdir build && cd build
-cmake ..
-cmake --build .
+```c
+#define ECS_IMPLEMENTATION
+#include "ECS/ecs_core.h"
 ```
+
+3. Refer to `components_tags.def` to define your components and tags
+
+That's it! No build configuration needed.
 
 ## Quick Start
 
-### 1. Create a Component
+### 1. Define Components and Tags
 
-For a component named `ExampleComponent`, create these files:
-
-**`Components/ExampleComponent/example_component.h`**
-```c
-#ifndef EXAMPLE_COMPONENT_H
-#define EXAMPLE_COMPONENT_H
-#include "ecs_core.h"
-
-extern SomeDataType ExampleComponentData[MAX_ENTITIES];
-
-void AddExample(const struct Entity *entity, /* parameters */);
-bool HasExample(const struct Entity *entity);
-SomeDataType GetExample(const struct Entity *entity);
-void RemoveExample(const struct Entity *entity);
-
-#endif
-```
-
-**`Components/ExampleComponent/example_component.c`**
-```c
-#include "example_component.h"
-
-SomeDataType ExampleComponentData[MAX_ENTITIES];
-
-void AddExample(const struct Entity *entity, /* parameters */) {
-    ExampleComponentData[entity->id] = /* your data */;
-    EntitySignatures[entity->id] |= COMPONENT_EXAMPLE;
-}
-
-bool HasExample(const struct Entity *entity) {
-    return EntitySignatures[entity->id] & COMPONENT_EXAMPLE;
-}
-
-SomeDataType GetExample(const struct Entity *entity) {
-    return ExampleComponentData[entity->id];
-}
-
-void RemoveExample(const struct Entity *entity) {
-    EntitySignatures[entity->id] &= ~COMPONENT_EXAMPLE;
-}
-```
-
-Add to `ecs_core.h`:
-```c
-typedef enum {
-    COMPONENT_NONE = 0,
-    COMPONENT_TEST = 1 << 0,
-    COMPONENT_EXAMPLE = 1 << 1,  // Add your component
-} ComponentType;
-```
-
-### 2. Define an Entity Type
-
-**`Entities/ExampleEntity/example_entity.h`**
-```c
-#ifndef EXAMPLE_ENTITY_H
-#define EXAMPLE_ENTITY_H
-#include "ecs_core.h"
-
-struct Entity InstantiateExampleEntity(/* parameters */);
-
-#endif
-```
-
-**`Entities/ExampleEntity/example_entity.c`**
-```c
-#include "example_entity.h"
-#include "example_component.h"
-
-struct Entity InstantiateExampleEntity(/* parameters */) {
-    struct Entity entity;
-    InitializeEntity(&entity);
-    AddComponent(&entity, Example, /* parameters */);
-    return entity;
-}
-```
-
-### 3. Update CMakeLists.txt
-
-Add your new source files:
-```cmake
-add_executable(CEngine
-    main.c
-    ecs_core.c
-    Components/ExampleComponent/example_component.c
-    Entities/ExampleEntity/example_entity.c
-)
-
-target_include_directories(CEngine PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/Components/ExampleComponent
-    ${CMAKE_CURRENT_SOURCE_DIR}/Entities/ExampleEntity
-)
-```
-
-### 4. Use the Macros
+Create or modify `ECS/components_tags.def`:
 
 ```c
-#include "ecs_core.h"
-#include "example_entity.h"
-#include "example_component.h"
+COMPONENT(Example, { int value; })
+COMPONENT(Position, { float x, y; })
+TAG(Default)
+TAG(Active)
+```
+
+### 2. Initialize and Use
+
+```c
+#define ECS_IMPLEMENTATION
+#include "ECS/ecs_core.h"
 
 int main(void) {
-    InitializeStack(&AvailableIDs);
-    
-    struct Entity entity = InstantiateEntity(Example, /* args */);
-    
-    AddComponent(&entity, Example, /* args */);
-    
-    if (HasComponent(&entity, Example)) {
-        SomeDataType data = GetComponent(&entity, Example);
+    // Initialize the ECS system
+    ECS_Init();
+
+    // Create an entity with components and tags
+    CreateEntity(e_Dummy, {
+        AddTag(&e_Dummy, Default);
+        AddComponent(&e_Dummy, Example, .value = 42);
+    });
+
+    // Access component data
+    const int dummyValue = GetComponent(e_Dummy.id, Example)->value;
+    printf("Entity %d has example component with value: %d\n", e_Dummy.id, dummyValue);
+
+    // Query entities with specific components/tags
+    ForEachEntityWith(entity, TAG_Default) {
+        printf("Entity %d has Default Tag\n", entity);
     }
-    
-    RemoveComponent(&entity, Example);
-    DestroyEntity(&entity);
-    
+
+    // Remove component
+    RemoveComponent(&e_Dummy, Example);
+
+    // Destroy entity
+    DestroyEntity(&e_Dummy);
+
+    // Cleanup
+    ECS_Shutdown();
     return 0;
 }
 ```
 
 ## Macro Reference
 
-```c
-// Entity instantiation
-InstantiateEntity(ComponentName, ...args)
-// Calls: InstantiateComponentNameEntity(...args)
+All available macros are defined in `ecs_core.h`. Here are the most commonly used:
 
-// Component operations
-AddComponent(entity, ComponentName, ...args)         // Calls: AddComponentName(entity, ...args)
-HasComponent(entity, ComponentName)                 // Calls: HasComponentName(entity)
-GetComponent(entity, ComponentName)                 // Calls: GetComponentName(entity)
-RemoveComponent(entity, ComponentName)              // Calls: RemoveComponentName(entity)
+### Entity Management
+
+```c
+CreateEntity(varName, { ... })     // Create a new entity and initialize it
+DestroyEntity(&entity)              // Destroy an entity and recycle its ID
+ECS_Init()                           // Initialize the ECS system
+ECS_Shutdown()                       // Cleanup and free all resources
 ```
 
-## Function Naming Convention
+### Component Operations
 
-For macros to work correctly, follow these naming patterns:
+```c
+AddComponent(&entity, ComponentName, .field = value)  // Add component to entity
+HasComponent(&entity, ComponentName)                  // Check if entity has component
+GetComponent(entity.id, ComponentName)                // Get pointer to component data
+RemoveComponent(&entity, ComponentName)               // Remove component from entity
+```
 
-| Macro | Required Function | Pattern |
-|-------|------------------|---------|
-| `InstantiateEntity(Xxx, ...)` | `struct Entity Instantiate**Xxx**Entity(...)` | PascalCase component name |
-| `AddComponent(e, Xxx, ...)` | `void Add**Xxx**(const struct Entity *e, ...)` | PascalCase component name |
-| `HasComponent(e, Xxx)` | `bool Has**Xxx**(const struct Entity *e)` | PascalCase component name |
-| `GetComponent(e, Xxx)` | `ReturnType Get**Xxx**(const struct Entity *e)` | PascalCase component name |
-| `RemoveComponent(e, Xxx)` | `void Remove**Xxx**(const struct Entity *e)` | PascalCase component name |
+### Tag Operations
 
-**Example:** For `AddComponent(&e, Example, x, y)` → must define `void AddExample(const struct Entity *e, ...)`
+```c
+AddTag(&entity, TagName)            // Add tag to entity
+HasTag(&entity, TagName)            // Check if entity has tag
+RemoveTag(&entity, TagName)         // Remove tag from entity
+```
+
+### Querying
+
+```c
+ForEachEntityWith(entityVar, TAG_Name, COMPONENT_Name) {
+    // Process entity matching all specified tags/components
+}
+```
+
+### Internal Functions (Advanced)
+
+Refer to `ecs_core.h` for additional utility functions:
+- `Signature_SetBit()`, `Signature_ClearBit()`, `Signature_TestBit()`
+- `Signature_Matches()`, `Signature_ClearAll()`
+- Stack-based operations for ID management
+
+## Component Definition Format
+
+Components are defined in `components_tags.def` using the `COMPONENT` macro:
+
+```c
+COMPONENT(MyComponent, {
+    int field1;
+    float field2;
+    char data[128];
+})
+```
+
+The second parameter is the struct body containing your component data.
+
+## Tag Definition Format
+
+Tags are defined in `components_tags.def` using the `TAG` macro:
+
+```c
+TAG(MyTag)
+```
+
+Tags have no associated data—they're purely for categorization.
 
 ## Architecture
 
-- **Entity**: Unique ID + generation counter
+- **Entity**: An object with a unique ID and generation counter
 - **Component**: Data stored in parallel arrays, indexed by entity ID
-- **Signature**: 64-bit bitmask tracking which components an entity has
-- **System**: Logic that processes entities with specific components
+- **Tag**: A lightweight marker with no associated data
+- **Signature**: 64-bit bitmask (256 bits total) tracking which components/tags an entity has
+- **System**: Logic that processes entities matching specific component/tag signatures
 
-## Limits
+## System Limits
 
-- Maximum entities: `MAX_ENTITIES` (default 5000)
-- Maximum component types: 64
-- All data stored in stack-allocated arrays (no dynamic allocation)
+- **Maximum entities**: Dynamically resizable (starts at 32, doubles as needed)
+- **Maximum component types**: 256 (4 chunks × 64 bits)
+- **Dynamic allocation**: All data uses malloc/realloc for flexibility
+
+## Example: Complete Game Loop
+
+See `main.c` for a complete working example demonstrating:
+- Entity creation with components
+- Component access and modification
+- Tag-based entity queries
+- Entity cleanup
 
 ## License
 

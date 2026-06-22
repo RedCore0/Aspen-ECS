@@ -1,10 +1,10 @@
-# ECS_C - Entity Component System in C
+# Aspen ECS- Entity Component System in C
 
 A lightweight, macro-based Entity Component System (ECS) implementation written in C. This is a data-oriented architecture library designed for efficient entity and component management using compile-time code generation.
 
 ## Overview
 
-ECS_C provides a flexible framework for building applications using the Entity Component System pattern. Instead of traditional inheritance hierarchies, ECS_C uses composition, where entities are collections of components and tags. The library uses powerful macros to simplify entity and component management while maintaining high performance.
+Aspen ECS provides a flexible framework for building applications using the Entity Component System pattern. Instead of traditional inheritance hierarchies, ECS_C uses composition, where entities are collections of components and tags. The library uses powerful macros to simplify entity and component management while maintaining high performance.
 
 **Key Features:**
 - **Macro-based API** - Clean, expressive syntax with compile-time code generation
